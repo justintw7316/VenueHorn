@@ -1,4 +1,11 @@
+"""
+Ingest a venues CSV into the VenueHorn vector index.
+
+Usage:
+    python3 scripts/ingest_csv.py "data/Sample Test Venues_Vendors - Venues.csv"
+"""
 import argparse
+import asyncio
 import csv
 import sys
 from pathlib import Path
@@ -43,7 +50,7 @@ def _row_to_text(row: dict) -> str:
     return "\n".join(parts)
 
 
-def ingest_csv(path: Path) -> int:
+async def ingest_csv(path: Path) -> int:
     docs = []
     with path.open(newline="", encoding="utf-8") as handle:
         reader = csv.DictReader(handle)
@@ -57,7 +64,9 @@ def ingest_csv(path: Path) -> int:
                 source = f"{path.name}#row{idx}:{venue_name}"
             docs.append((text, source))
 
-    return vector_store.add_documents(docs)
+    count = await vector_store.add_documents(docs)
+    vector_store.flush()
+    return count
 
 
 def main() -> None:
@@ -68,7 +77,7 @@ def main() -> None:
     if not args.csv_path.exists():
         raise SystemExit(f"CSV not found: {args.csv_path}")
 
-    count = ingest_csv(args.csv_path)
+    count = asyncio.run(ingest_csv(args.csv_path))
     print(f"Chunks added: {count}")
 
 
